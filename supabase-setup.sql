@@ -4,7 +4,7 @@
 -- ============================================================
 
 -- 1. 业务员资料表（扩展 Supabase Auth）
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -20,12 +20,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- 2. 产品库（全员共享，任何人可读写）
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   code TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   spec TEXT NOT NULL,
@@ -41,7 +42,7 @@ CREATE POLICY "登录用户可更新产品" ON products FOR UPDATE USING (auth.r
 CREATE POLICY "登录用户可删除产品" ON products FOR DELETE USING (auth.role() = 'authenticated');
 
 -- 3. 货代运价库（全员共享）
-CREATE TABLE freight (
+CREATE TABLE IF NOT EXISTS freight (
   id BIGSERIAL PRIMARY KEY,
   countries TEXT NOT NULL,
   countries_cn TEXT DEFAULT '',
@@ -60,7 +61,7 @@ CREATE POLICY "所有人可读货代" ON freight FOR SELECT USING (true);
 CREATE POLICY "登录用户可管理货代" ON freight FOR ALL USING (auth.role() = 'authenticated');
 
 -- 4. 客户库（按用户隔离）
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -82,7 +83,7 @@ CREATE POLICY "用户可更新自己的客户" ON customers FOR UPDATE USING (au
 CREATE POLICY "用户可删除自己的客户" ON customers FOR DELETE USING (auth.uid() = user_id);
 
 -- 5. 订单表（按用户隔离）
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id BIGSERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   customer_id BIGINT REFERENCES customers(id) ON DELETE SET NULL,
@@ -106,7 +107,7 @@ CREATE POLICY "用户可更新自己的订单" ON orders FOR UPDATE USING (auth.
 CREATE POLICY "用户可删除自己的订单" ON orders FOR DELETE USING (auth.uid() = user_id);
 
 -- 6. 订单明细表
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id BIGSERIAL PRIMARY KEY,
   order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   code TEXT DEFAULT '',
