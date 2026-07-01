@@ -36,9 +36,13 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "所有人可读产品" ON products;
 CREATE POLICY "所有人可读产品" ON products FOR SELECT USING (true);
+DROP POLICY IF EXISTS "登录用户可新增产品" ON products;
 CREATE POLICY "登录用户可新增产品" ON products FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "登录用户可更新产品" ON products;
 CREATE POLICY "登录用户可更新产品" ON products FOR UPDATE USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "登录用户可删除产品" ON products;
 CREATE POLICY "登录用户可删除产品" ON products FOR DELETE USING (auth.role() = 'authenticated');
 
 -- 3. 货代运价库（全员共享）
@@ -57,7 +61,9 @@ CREATE TABLE IF NOT EXISTS freight (
 );
 
 ALTER TABLE freight ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "所有人可读货代" ON freight;
 CREATE POLICY "所有人可读货代" ON freight FOR SELECT USING (true);
+DROP POLICY IF EXISTS "登录用户可管理货代" ON freight;
 CREATE POLICY "登录用户可管理货代" ON freight FOR ALL USING (auth.role() = 'authenticated');
 
 -- 4. 客户库（按用户隔离）
@@ -77,9 +83,13 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "用户只能看自己的客户" ON customers;
 CREATE POLICY "用户只能看自己的客户" ON customers FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "用户可新增自己的客户" ON customers;
 CREATE POLICY "用户可新增自己的客户" ON customers FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "用户可更新自己的客户" ON customers;
 CREATE POLICY "用户可更新自己的客户" ON customers FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "用户可删除自己的客户" ON customers;
 CREATE POLICY "用户可删除自己的客户" ON customers FOR DELETE USING (auth.uid() = user_id);
 
 -- 5. 订单表（按用户隔离）
@@ -101,9 +111,13 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "用户只能看自己的订单" ON orders;
 CREATE POLICY "用户只能看自己的订单" ON orders FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "用户可新增订单" ON orders;
 CREATE POLICY "用户可新增订单" ON orders FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "用户可更新自己的订单" ON orders;
 CREATE POLICY "用户可更新自己的订单" ON orders FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "用户可删除自己的订单" ON orders;
 CREATE POLICY "用户可删除自己的订单" ON orders FOR DELETE USING (auth.uid() = user_id);
 
 -- 6. 订单明细表
