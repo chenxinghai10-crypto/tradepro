@@ -216,14 +216,14 @@ const DEFAULT_PRODUCTS = [
 
 // 默认货代运价库
 const DEFAULT_FREIGHT = [
-  {id:1,countries:'America',forwarder:'Chen Qiusheng',channel:'FedEx',firstWeight:'80',additionalWeight:'5',leadTime:'6-8 working days',note:'Tax not included'},
-  {id:2,countries:'European Countries',forwarder:'Xiong Jing',channel:'UPS/DHL',firstWeight:'80',additionalWeight:'5',leadTime:'6-11 working days',note:'Tax not included'},
-  {id:3,countries:'United Kingdom',forwarder:'Xiong Jing',channel:'Royal Mail',firstWeight:'0',additionalWeight:'0',leadTime:'7-12 working days',note:''},
-  {id:4,countries:'Canada',forwarder:'Xiong Jing',channel:'Canada Post',firstWeight:'0',additionalWeight:'0',leadTime:'7-12 working days',note:''},
-  {id:5,countries:'Australia',forwarder:'Xiong Jing',channel:'Australia Post',firstWeight:'85',additionalWeight:'5',leadTime:'6-10 working days',note:''},
-  {id:6,countries:'Brazil',forwarder:'Chen Qiusheng',channel:'FedEx',firstWeight:'100',additionalWeight:'5',leadTime:'6-9 working days',note:'Buyer bear tax'},
-  {id:7,countries:'India,UAE,Israel,Saudi Arabia,South Africa',forwarder:'Xiong Jing',channel:'UPS',firstWeight:'100',additionalWeight:'4-5',leadTime:'6-9 working days',note:'Buyer bear tax'},
-  {id:8,countries:'Turkey,Qatar,Mexico,Chile',forwarder:'Yinghai',channel:'',firstWeight:'100',additionalWeight:'5',leadTime:'10-18 working days',note:'Remind customs clearance risk'}
+  {id:1,countries:'America',countriesCN:'美国',forwarder:'Chen Qiusheng',channel:'FedEx',firstWeight:'80',additionalWeight:'5',leadTime:'6-8 working days',note:'Tax not included'},
+  {id:2,countries:'European Countries',countriesCN:'欧洲各国',forwarder:'Xiong Jing',channel:'UPS/DHL',firstWeight:'80',additionalWeight:'5',leadTime:'6-11 working days',note:'Tax not included'},
+  {id:3,countries:'United Kingdom',countriesCN:'英国',forwarder:'Xiong Jing',channel:'Royal Mail',firstWeight:'0',additionalWeight:'0',leadTime:'7-12 working days',note:''},
+  {id:4,countries:'Canada',countriesCN:'加拿大',forwarder:'Xiong Jing',channel:'Canada Post',firstWeight:'0',additionalWeight:'0',leadTime:'7-12 working days',note:''},
+  {id:5,countries:'Australia',countriesCN:'澳大利亚',forwarder:'Xiong Jing',channel:'Australia Post',firstWeight:'85',additionalWeight:'5',leadTime:'6-10 working days',note:''},
+  {id:6,countries:'Brazil',countriesCN:'巴西',forwarder:'Chen Qiusheng',channel:'FedEx',firstWeight:'100',additionalWeight:'5',leadTime:'6-9 working days',note:'Buyer bear tax'},
+  {id:7,countries:'India,UAE,Israel,Saudi Arabia,South Africa',countriesCN:'印度,阿联酋,以色列,沙特阿拉伯,南非',forwarder:'Xiong Jing',channel:'UPS',firstWeight:'100',additionalWeight:'4-5',leadTime:'6-9 working days',note:'Buyer bear tax'},
+  {id:8,countries:'Turkey,Qatar,Mexico,Chile',countriesCN:'土耳其,卡塔尔,墨西哥,智利',forwarder:'Yinghai',channel:'',firstWeight:'100',additionalWeight:'5',leadTime:'10-18 working days',note:'Remind customs clearance risk'}
 ];
 
 /* ========== localStorage 操作（按用户隔离数据） ========== */
@@ -526,7 +526,11 @@ function onCustomerChange() {
   detailEl.classList.remove('hidden');
   // 匹配货代
   const freight = getData('freight') || [];
-  const matched = freight.find(f => f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())));
+  const matched = freight.find(f => {
+    const en = f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase()));
+    const cn = f.countriesCN ? f.countriesCN.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())) : false;
+    return en || cn;
+  });
   if (matched) {
     freightEl.innerHTML = '<div class="text-sm space-y-1"><div><b>货代：</b>' + matched.forwarder + '</div><div><b>渠道：</b>' + matched.channel + '</div>'
       + (matched.firstWeight !== '0' ? '<div><b>首重运费：</b>' + matched.firstWeight + ' USD</div><div><b>续重运费：</b>' + matched.additionalWeight + ' USD</div>' : '')
@@ -545,7 +549,11 @@ function saveOrder() {
   const customers = getData('customers') || [];
   const cust = customers.find(c => c.id == custId);
   const freight = getData('freight') || [];
-  const matched = freight.find(f => f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())));
+  const matched = freight.find(f => {
+    const en = f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase()));
+    const cn = f.countriesCN ? f.countriesCN.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())) : false;
+    return en || cn;
+  });
   const discountPct = parseFloat(document.getElementById('discountInput').value || 0);
   const subtotal = quoteItems.reduce((s, it) => s + it.lineTotal, 0);
   const order = {
@@ -582,7 +590,11 @@ function generateShippingDoc() {
   const customers = getData('customers') || [];
   const cust = customers.find(c => c.id == custId);
   const freight = getData('freight') || [];
-  const matched = freight.find(f => f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())));
+  const matched = freight.find(f => {
+    const en = f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase()));
+    const cn = f.countriesCN ? f.countriesCN.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())) : false;
+    return en || cn;
+  });
 
   // 汇总产品行
   const productLines = quoteItems.map(it => it.name + ' ' + it.spec + ' x' + it.qty).join('\n');
@@ -944,10 +956,11 @@ function resetProducts() {
 function renderFreightPage() {
   const freight = getData('freight') || [];
   const rows = freight.length === 0
-    ? '<tr><td colspan="8" class="text-center text-gray-400 py-8">暂无货代数据</td></tr>'
+    ? '<tr><td colspan="9" class="text-center text-gray-400 py-8">暂无货代数据</td></tr>'
     : freight.map(f => `
       <tr>
         <td class="font-medium">${f.countries}</td>
+        <td>${f.countriesCN || '-'}</td>
         <td>${f.forwarder}</td>
         <td>${f.channel || '-'}</td>
         <td>${f.firstWeight !== '0' ? f.firstWeight + ' USD' : '-'}</td>
@@ -971,7 +984,7 @@ function renderFreightPage() {
     <div class="card p-4">
       <div class="overflow-x-auto">
         <table class="quote-table w-full">
-          <thead><tr><th>国家/地区</th><th>货代</th><th>渠道</th><th>首重运费</th><th>续重运费</th><th>运输时效</th><th>备注</th><th>操作</th></tr></thead>
+          <thead><tr><th>国家/地区(英文)</th><th>对应中文</th><th>货代</th><th>渠道</th><th>首重运费</th><th>续重运费</th><th>运输时效</th><th>备注</th><th>操作</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -988,7 +1001,8 @@ function showFreightForm(editId) {
   modal.innerHTML = '<div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">'
     + '<h3 class="text-lg font-bold mb-4">' + title + '</h3>'
     + '<div class="grid grid-cols-2 gap-3 text-sm">'
-    + '<div class="col-span-2"><label class="text-xs text-gray-500">国家/地区（多个用逗号分隔）</label><input id="ff_countries" class="input-field" value="' + (f ? f.countries : '') + '" placeholder="如：India, UAE, Israel"></div>'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">国家/地区 英文（多个用逗号分隔）</label><input id="ff_countries" class="input-field" value="' + (f ? f.countries : '') + '" placeholder="如：India, UAE, Israel"></div>'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">对应中文名称（用于匹配客户国家）</label><input id="ff_countriesCN" class="input-field" value="' + (f ? (f.countriesCN || '') : '') + '" placeholder="如：印度, 阿联酋, 以色列"></div>'
     + '<div><label class="text-xs text-gray-500">货代名称 (Forwarder)</label><input id="ff_forwarder" class="input-field" value="' + (f ? f.forwarder : '') + '"></div>'
     + '<div><label class="text-xs text-gray-500">物流渠道 (Channel)</label><input id="ff_channel" class="input-field" value="' + (f ? f.channel : '') + '"></div>'
     + '<div><label class="text-xs text-gray-500">首重运费 (First Weight USD)</label><input id="ff_first" class="input-field" value="' + (f ? f.firstWeight : '') + '"></div>'
@@ -1005,7 +1019,7 @@ function showFreightForm(editId) {
 
 function saveFreight(editId) {
   const get = id => document.getElementById('ff_' + id)?.value || '';
-  const data = { countries: get('countries'), forwarder: get('forwarder'), channel: get('channel'), firstWeight: get('first'), additionalWeight: get('additional'), leadTime: get('leadtime'), note: get('note') };
+  const data = { countries: get('countries'), countriesCN: get('countriesCN'), forwarder: get('forwarder'), channel: get('channel'), firstWeight: get('first'), additionalWeight: get('additional'), leadTime: get('leadtime'), note: get('note') };
   if (!data.countries || !data.forwarder) return toast('请至少填写国家/地区和货代名称', 'error');
   let freight = getData('freight') || [];
   if (editId) {
