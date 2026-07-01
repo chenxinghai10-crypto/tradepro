@@ -834,11 +834,15 @@ function deleteCustomer(id) {
 /* ================================================================
    六、产品管理页面 (CRUD)
    ================================================================ */
-function renderProductsPage() {
+function renderProductsPage(filterText) {
   const products = getData('products') || [];
-  const rows = products.length === 0
-    ? '<tr><td colspan="6" class="text-center text-gray-400 py-8">暂无产品数据</td></tr>'
-    : products.map(p => `
+  const search = (filterText || '').toLowerCase().trim();
+  const filtered = search
+    ? products.filter(p => p.code.toLowerCase().includes(search) || p.name.toLowerCase().includes(search))
+    : products;
+  const rows = filtered.length === 0
+    ? '<tr><td colspan="5" class="text-center text-gray-400 py-8">' + (search ? '未找到匹配产品' : '暂无产品数据') + '</td></tr>'
+    : filtered.map(p => `
       <tr>
         <td>${p.code}</td>
         <td>${p.name}</td>
@@ -858,6 +862,12 @@ function renderProductsPage() {
         <button class="btn-primary" onclick="showProductForm()">+ 新增产品</button>
       </div>
     </div>
+    <div class="card p-4 mb-3">
+      <div class="relative">
+        <input type="text" id="productSearch" class="input-field pl-9" placeholder="搜索产品名称或内部编码..." value="${search}" oninput="renderProductsPage(this.value)">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+      </div>
+    </div>
     <div class="card p-4">
       <div class="overflow-x-auto">
         <table class="quote-table w-full">
@@ -865,6 +875,7 @@ function renderProductsPage() {
           <tbody>${rows}</tbody>
         </table>
       </div>
+      <div class="text-xs text-gray-400 mt-2">共 ${filtered.length} 款产品</div>
     </div>
   `;
 }
