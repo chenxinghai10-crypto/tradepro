@@ -1,0 +1,1031 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外贸业务员独立管理系统</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, ''Segoe UI'', ''Microsoft YaHei'', sans-serif; background: #f0f2f5; }
+  .sidebar { width: 220px; min-height: 100vh; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); }
+  .nav-item { transition: all 0.2s; border-left: 3px solid transparent; }
+  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: #4fc3f7; }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .btn-primary { background: linear-gradient(135deg, #1a73e8, #1557b0); color: #fff; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,115,232,0.4); }
+  .btn-danger { background: #e53935; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn-outline { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; padding: 7px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .btn-success { background: #10b981; color: #fff; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .input-field { width: 100%; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .input-field:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .toast { position: fixed; top: 20px; right: 20px; z-index: 200; padding: 12px 24px; border-radius: 10px; color: #fff; font-size: 14px; animation: slideIn 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  /* ===== 移动端适配 ===== */
+  @media (max-width: 768px) {
+    /* 侧边栏收缩为图标模式 */
+    .sidebar { width: 56px; }
+    .sidebar .nav-text, .sidebar .logo-text { display: none; }
+    .sidebar .nav-item { justify-content: center; padding: 12px 0; border-left: none; border-bottom: 2px solid transparent; }
+    .sidebar .nav-item.active { border-left: none; border-bottom-color: #4fc3f7; }
+    .sidebar .nav-item span { margin: 0; font-size: 20px; }
+    .main-content { padding: 10px; }
+    /* 登录弹窗全宽 */
+    #loginOverlay > div { margin: 10px; padding: 20px; }
+    /* 报价页面单列布局 */
+    .grid-cols-1.lg\:grid-cols-3 { display: flex; flex-direction: column; }
+    /* 表格横向滚动 */
+    .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+    /* 报价清单表格字号缩小 */
+    .quote-table th, .quote-table td { padding: 6px 8px; font-size: 11px; }
+    /* 按钮加大触摸区域 */
+    .btn-primary, .btn-outline, .btn-danger, .btn-success { padding: 10px 16px; font-size: 14px; min-height: 40px; }
+    .btn-danger, .btn-outline { font-size: 12px; padding: 6px 10px; min-height: 32px; }
+    /* 模态弹窗全屏 */
+    .modal-overlay > div { margin: 10px; padding: 16px; max-height: 90vh; border-radius: 12px; }
+    .modal-overlay > div > .grid { grid-template-columns: 1fr; }
+    /* 输入框适配 */
+    .input-field { font-size: 16px; padding: 10px 12px; }
+    /* 订单列表卡片 */
+    #orderList .card { padding: 12px; }
+    /* 搜索筛选区 */
+    #orderSearch, #orderTimeFilter { width: 100%; }
+    /* 产品/货代表格 */
+    .quote-table { font-size: 11px; }
+    /* 标题字号 */
+    h2 { font-size: 18px; }
+    /* flex gap 间距收紧 */
+    .flex.gap-3 { gap: 8px; }
+    .space-y-4 > * + * { margin-top: 10px; }
+    /* 订单搜索区域 */
+    .flex.gap-3.flex-wrap.items-end > div { width: 100%; }
+  }
+  .quote-table th, .quote-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e8ecf1; font-size: 13px; }
+  .quote-table th { background: #f8fafc; color: #475569; font-weight: 600; }
+  pre.shipping-doc { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+</style>
+</head>
+<body class="flex min-h-screen">
+<!-- ========== 左侧导航 ========== -->
+<aside class="sidebar flex flex-col py-4 text-white flex-shrink-0" id="sidebar">
+  <div class="logo-text px-4 mb-8 text-xl font-bold tracking-wide">🚀 TradePro</div>
+  <nav class="flex-1 flex flex-col gap-1 px-2" id="navMenu">
+    <a href="#" data-page="quote" class="nav-item active flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
+      <span class="text-lg">📋</span><span class="nav-text">新建报价</span></a>
+    <a href="#" data-page="orders" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
+      <span class="text-lg">📁</span><span class="nav-text">订单记录</span></a>
+    <a href="#" data-page="customers" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
+      <span class="text-lg">👥</span><span class="nav-text">客户管理</span></a>
+    <a href="#" data-page="products" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
+      <span class="text-lg">🧪</span><span class="nav-text">产品管理</span></a>
+    <a href="#" data-page="freight" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
+      <span class="text-lg">🚚</span><span class="nav-text">货代运价</span></a>
+  </nav>
+  <div class="px-4 pt-4 border-t border-white/10">
+    <div class="text-xs text-gray-400 nav-text">当前账号</div>
+    <div class="text-sm font-medium" id="currentUserDisplay">-</div>
+    <button onclick="logout()" class="mt-2 text-xs text-gray-400 hover:text-white transition nav-text">退出登录</button>
+  </div>
+</aside>
+
+<!-- ========== 主内容区 ========== -->
+<main class="flex-1 overflow-auto main-content" id="mainContent" style="margin-left:0"></main>
+
+<!-- Toast 提示容器 -->
+<div id="toastContainer"></div>
+
+<!-- ========== 登录弹窗 ========== -->
+<div class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50" id="loginOverlay">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+    <div class="text-center mb-6">
+      <div class="text-4xl mb-2">🚀</div>
+      <h1 class="text-2xl font-bold text-gray-800">TradePro</h1>
+      <p class="text-sm text-gray-500">外贸业务员独立管理系统</p>
+    </div>
+    <div class="flex mb-4 border-b">
+      <button class="flex-1 pb-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600" id="tabLogin" onclick="switchLoginTab('login')">登录</button>
+      <button class="flex-1 pb-2 text-sm font-medium border-b-2 border-transparent text-gray-400" id="tabRegister" onclick="switchLoginTab('register')">注册</button>
+    </div>
+    <div id="loginForm">
+      <input type="text" id="loginUsername" placeholder="用户名" class="input-field mb-3">
+      <input type="password" id="loginPassword" placeholder="密码" class="input-field mb-4" onkeydown="if(event.key==='Enter')handleLogin()">
+      <button onclick="handleLogin()" class="btn-primary w-full py-3 text-base">登 录</button>
+    </div>
+    <div id="registerForm" class="hidden">
+      <input type="text" id="regUsername" placeholder="设置用户名（英文/拼音）" class="input-field mb-3">
+      <input type="text" id="regDisplayName" placeholder="业务员姓名（用于发货文案签名）" class="input-field mb-3">
+      <input type="password" id="regPassword" placeholder="设置密码" class="input-field mb-4" onkeydown="if(event.key==='Enter')handleRegister()">
+      <button onclick="handleRegister()" class="btn-primary w-full py-3 text-base">注 册 账 号</button>
+    </div>
+    <p class="text-xs text-gray-400 text-center mt-4">所有数据仅存储在您的浏览器本地，不经过任何服务器</p>
+  </div>
+</div>
+<script>
+/* ================================================================
+   一、全局状态 & 工具函数
+   ================================================================ */
+let currentUser = null;          // { username, displayName }
+let currentPage = 'quote';      // 当前页面
+
+// 默认产品库 (全英文名称)
+const DEFAULT_PRODUCTS = [
+  {code:'KPV5',name:'KPV',spec:'5mg*10vials',price:50},
+  {code:'KPV10',name:'KPV',spec:'10mg*10vials',price:80},
+  {code:'CND5',name:'CJC-1295 without DAC',spec:'5mg*10vials',price:80},
+  {code:'CND10',name:'CJC-1295 without DAC',spec:'10mg*10vials',price:130},
+  {code:'CD5',name:'CJC-1295 with DAC',spec:'5mg*10vials',price:160},
+  {code:'CP10',name:'CJC-1295+Ipamorelin',spec:'10mg*10vials',price:110},
+  {code:'IP5',name:'Ipamorelin',spec:'5mg*10vials',price:50},
+  {code:'IP10',name:'Ipamorelin',spec:'10mg*10vials',price:80},
+  {code:'SMO5',name:'Sermorelin Acetate',spec:'5mg*10vials',price:100},
+  {code:'SMO10',name:'Sermorelin Acetate',spec:'10mg*10vials',price:130},
+  {code:'TSM5',name:'Tesamorelin',spec:'5mg*10vials',price:120},
+  {code:'TSM10',name:'Tesamorelin',spec:'10mg*10vials',price:200},
+  {code:'TSM20',name:'Tesamorelin',spec:'20mg*10vials',price:350},
+  {code:'ET10',name:'Epithalon',spec:'10mg*10vials',price:60},
+  {code:'ET50',name:'Epithalon',spec:'50mg*10vials',price:145},
+  {code:'NJ100',name:'NAD+',spec:'100mg*10vials',price:60},
+  {code:'NJ500',name:'NAD+',spec:'500mg*10vials',price:85},
+  {code:'NJ1000',name:'NAD+',spec:'1000mg*10vials',price:140},
+  {code:'MS10',name:'MOTS-c',spec:'10mg*10vials',price:80},
+  {code:'MS40',name:'MOTS-c',spec:'40mg*10vials',price:200},
+  {code:'2S10',name:'SS-31',spec:'10mg*10vials',price:100},
+  {code:'TA5',name:'Thymosin Alpha-1',spec:'5mg*10vials',price:100},
+  {code:'TA10',name:'Thymosin Alpha-1',spec:'10mg*10vials',price:160},
+  {code:'SK5',name:'Selank',spec:'5mg*10vials',price:50},
+  {code:'SK10',name:'Selank',spec:'10mg*10vials',price:70},
+  {code:'XA5',name:'Semax',spec:'5mg*10vials',price:50},
+  {code:'XA10',name:'Semax',spec:'10mg*10vials',price:60},
+  {code:'DS5',name:'DSIP',spec:'5mg*10vials',price:55},
+  {code:'DR5',name:'Dermorphin',spec:'5mg*10vials',price:65},
+  {code:'MT1',name:'Melanotan 1',spec:'10mg*10vials',price:55},
+  {code:'ML10',name:'Melanotan 2',spec:'10mg*10vials',price:60},
+  {code:'P41',name:'PT-141',spec:'10mg*10vials',price:70},
+  {code:'KS5',name:'Kisspeptin-10',spec:'5mg*10vials',price:65},
+  {code:'KS10',name:'Kisspeptin-10',spec:'10mg*10vials',price:100},
+  {code:'GND5',name:'Gonadorelin Acetate',spec:'5mg*10vials',price:75},
+  {code:'GND10',name:'Gonadorelin Acetate',spec:'10mg*10vials',price:125},
+  {code:'TR12',name:'Triptorelin Acetate',spec:'2mg*10vials',price:50},
+  {code:'VIP5',name:'VIP',spec:'5mg*10vials',price:85},
+  {code:'VIP10',name:'VIP',spec:'10mg*10vials',price:145},
+  {code:'5AM',name:'5-Amino-1MQ',spec:'5mg*10vials',price:55},
+  {code:'G65',name:'GHRP-6',spec:'5mg*10vials',price:50},
+  {code:'375',name:'LL-37',spec:'5mg*10vials',price:95},
+  {code:'IG1',name:'IGF-1 LR3',spec:'1mg*10vials',price:200},
+  {code:'OT5',name:'Oxytocin Acetate',spec:'5mg*10vials',price:60},
+  {code:'GTT600',name:'Glutathione',spec:'600mg*10vials',price:50},
+  {code:'GTT1000',name:'Glutathione',spec:'1500mg*10vials',price:80},
+  {code:'BAC3',name:'Bacteriostatic Water',spec:'3ml*10vials',price:10},
+  {code:'BAC10',name:'Bacteriostatic Water',spec:'10ml*10vials',price:15},
+  {code:'TR5',name:'Tirzepatide',spec:'5mg*10vials',price:50},
+  {code:'TR10',name:'Tirzepatide',spec:'10mg*10vials',price:60},
+  {code:'TR15',name:'Tirzepatide',spec:'15mg*10vials',price:75},
+  {code:'TR20',name:'Tirzepatide',spec:'20mg*10vials',price:90},
+  {code:'TR30',name:'Tirzepatide',spec:'30mg*10vials',price:120},
+  {code:'TR60',name:'Tirzepatide',spec:'60mg*10vials',price:195},
+  {code:'TR100',name:'Tirzepatide',spec:'100mg*10vials',price:295},
+  {code:'RT5',name:'Retatrutide',spec:'5mg*10vials',price:65},
+  {code:'RT10',name:'Retatrutide',spec:'10mg*10vials',price:100},
+  {code:'RT15',name:'Retatrutide',spec:'15mg*10vials',price:135},
+  {code:'RT20',name:'Retatrutide',spec:'20mg*10vials',price:165},
+  {code:'RT30',name:'Retatrutide',spec:'30mg*10vials',price:215},
+  {code:'RT60',name:'Retatrutide',spec:'60mg*10vials',price:380},
+  {code:'RT100',name:'Retatrutide',spec:'100mg*10vials',price:535},
+  {code:'SM5',name:'Semaglutide',spec:'5mg*10vials',price:50},
+  {code:'SM10',name:'Semaglutide',spec:'10mg*10vials',price:65},
+  {code:'SM20',name:'Semaglutide',spec:'20mg*10vials',price:90},
+  {code:'SM30',name:'Semaglutide',spec:'30mg*10vials',price:130},
+  {code:'CGL5',name:'Cagrilintide',spec:'5mg*10vials',price:135},
+  {code:'CGL10',name:'Cagrilintide',spec:'10mg*10vials',price:210},
+  {code:'5AD',name:'AOD9604',spec:'5mg*10vials',price:115},
+  {code:'10AD',name:'AOD9604',spec:'10mg*10vials',price:190},
+  {code:'BC5',name:'BPC-157',spec:'5mg*10vials',price:55},
+  {code:'BC10',name:'BPC-157',spec:'10mg*10vials',price:80},
+  {code:'BT5',name:'TB-500',spec:'5mg*10vials',price:90},
+  {code:'BT10',name:'TB-500',spec:'10mg*10vials',price:150},
+  {code:'BB10',name:'BPC-157+TB-500',spec:'10mg*10vials',price:110},
+  {code:'BB20',name:'BPC-157+TB-500',spec:'20mg*10vials',price:200},
+  {code:'CU50',name:'GHK-Cu',spec:'50mg*10vials',price:40},
+  {code:'CU100',name:'GHK-Cu',spec:'100mg*10vials',price:60},
+  {code:'BBG50',name:'Compound Peptide',spec:'50mg*10vials',price:155},
+  {code:'BBG70',name:'Compound Peptide',spec:'70mg*10vials',price:200},
+  {code:'KLOW',name:'KLOW Complex Peptide',spec:'80mg*10vials',price:235}
+];
+
+// 默认货代运价库
+const DEFAULT_FREIGHT = [
+  {id:1,countries:'America',forwarder:'Chen Qiusheng',channel:'FedEx',firstWeight:'80',additionalWeight:'5',leadTime:'6-8 working days',note:'Tax not included'},
+  {id:2,countries:'European Countries',forwarder:'Xiong Jing',channel:'UPS/DHL',firstWeight:'80',additionalWeight:'5',leadTime:'6-11 working days',note:'Tax not included'},
+  {id:3,countries:'United Kingdom',forwarder:'Xiong Jing',channel:'Royal Mail',firstWeight:'0',additionalWeight:'0',leadTime:'7-12 working days',note:''},
+  {id:4,countries:'Canada',forwarder:'Xiong Jing',channel:'Canada Post',firstWeight:'0',additionalWeight:'0',leadTime:'7-12 working days',note:''},
+  {id:5,countries:'Australia',forwarder:'Xiong Jing',channel:'Australia Post',firstWeight:'85',additionalWeight:'5',leadTime:'6-10 working days',note:''},
+  {id:6,countries:'Brazil',forwarder:'Chen Qiusheng',channel:'FedEx',firstWeight:'100',additionalWeight:'5',leadTime:'6-9 working days',note:'Buyer bear tax'},
+  {id:7,countries:'India,UAE,Israel,Saudi Arabia,South Africa',forwarder:'Xiong Jing',channel:'UPS',firstWeight:'100',additionalWeight:'4-5',leadTime:'6-9 working days',note:'Buyer bear tax'},
+  {id:8,countries:'Turkey,Qatar,Mexico,Chile',forwarder:'Yinghai',channel:'',firstWeight:'100',additionalWeight:'5',leadTime:'10-18 working days',note:'Remind customs clearance risk'}
+];
+
+/* ========== localStorage 操作（按用户隔离数据） ========== */
+function lsKey(key) { return currentUser ? key + '_' + currentUser.username : key; }
+
+function getUsers() { return JSON.parse(localStorage.getItem('tradePro_users') || '[]'); }
+function saveUsers(u) { localStorage.setItem('tradePro_users', JSON.stringify(u)); }
+
+function getData(key) { return JSON.parse(localStorage.getItem(lsKey(key)) || 'null'); }
+function saveData(key, data) { localStorage.setItem(lsKey(key), JSON.stringify(data)); }
+
+// 初始化产品库（首次登录自动写入默认数据）
+function initProducts() {
+  if (!getData('products')) { saveData('products', JSON.parse(JSON.stringify(DEFAULT_PRODUCTS))); }
+}
+function initFreight() {
+  if (!getData('freight')) { saveData('freight', JSON.parse(JSON.stringify(DEFAULT_FREIGHT))); }
+}
+/* ================================================================
+   二、认证模块（登录 / 注册 / 登出）
+   ================================================================ */
+function switchLoginTab(tab) {
+  document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('tabLogin').className = tab === 'login' ? 'flex-1 pb-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600' : 'flex-1 pb-2 text-sm font-medium border-b-2 border-transparent text-gray-400';
+  document.getElementById('tabRegister').className = tab === 'register' ? 'flex-1 pb-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600' : 'flex-1 pb-2 text-sm font-medium border-b-2 border-transparent text-gray-400';
+}
+
+function handleRegister() {
+  const uname = document.getElementById('regUsername').value.trim();
+  const disp = document.getElementById('regDisplayName').value.trim();
+  const pwd = document.getElementById('regPassword').value.trim();
+  if (!uname || !disp || !pwd) return toast('请填写所有字段', 'error');
+  const users = getUsers();
+  if (users.find(u => u.username === uname)) return toast('用户名已存在，请更换', 'error');
+  users.push({ username: uname, displayName: disp, password: pwd });
+  saveUsers(users);
+  toast('注册成功！请登录', 'success');
+  switchLoginTab('login');
+  document.getElementById('loginUsername').value = uname;
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('regUsername').value = '';
+  document.getElementById('regDisplayName').value = '';
+  document.getElementById('regPassword').value = '';
+}
+
+function handleLogin() {
+  const uname = document.getElementById('loginUsername').value.trim();
+  const pwd = document.getElementById('loginPassword').value.trim();
+  if (!uname || !pwd) return toast('请输入用户名和密码', 'error');
+  const users = getUsers();
+  const user = users.find(u => u.username === uname && u.password === pwd);
+  if (!user) return toast('用户名或密码错误', 'error');
+  currentUser = user;
+  initProducts();
+  initFreight();
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('currentUserDisplay').textContent = user.displayName;
+  navigateTo('quote');
+  toast('欢迎回来，' + user.displayName + '！', 'success');
+}
+
+function logout() {
+  if (!confirm('确定要退出登录吗？所有数据已自动保存。')) return;
+  currentUser = null;
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('mainContent').innerHTML = '';
+}
+
+/* ========== Toast 提示 ========== */
+function toast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.background = type === 'error' ? '#e53935' : type === 'success' ? '#10b981' : '#1a73e8';
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => { el.remove(); }, 2500);
+}
+
+/* ========== 导航切换 ========== */
+function navigateTo(page) {
+  currentPage = page;
+  document.querySelectorAll('#navMenu .nav-item').forEach(el => el.classList.remove('active'));
+  const target = document.querySelector(`#navMenu [data-page="${page}"]`);
+  if (target) target.classList.add('active');
+  switch (page) {
+    case 'quote': renderQuotePage(); break;
+    case 'orders': renderOrdersPage(); break;
+    case 'customers': renderCustomersPage(); break;
+    case 'products': renderProductsPage(); break;
+    case 'freight': renderFreightPage(); break;
+  }
+}
+
+// 导航点击事件
+document.getElementById('navMenu').addEventListener('click', function(e) {
+  const link = e.target.closest('[data-page]');
+  if (link) { e.preventDefault(); navigateTo(link.dataset.page); }
+});
+
+// 页面初始化：显示登录
+document.getElementById('loginOverlay').style.display = 'flex';
+/* ================================================================
+   三、新建报价页面（最核心功能）
+   ================================================================ */
+let quoteItems = []; // { code, name, spec, qty, unitPrice, lineTotal }
+
+function renderQuotePage() {
+  const customers = getData('customers') || [];
+  const products = getData('products') || [];
+  const freight = getData('freight') || [];
+
+  // 构建客户下拉选项
+  const custOptions = customers.map(c => '<option value="' + c.id + '">' + c.name + ' (' + c.country + ')</option>').join('');
+  // 构建产品下拉选项
+  const prodOptions = products.map(p => '<option value="' + p.code + '" data-name="' + p.name + '" data-spec="' + p.spec + '" data-price="' + p.price + '">' + p.code + ' - ' + p.name + '</option>').join('');
+
+  // 构建报价清单行
+  const itemsHtml = quoteItems.length === 0
+    ? '<tr><td colspan="7" class="text-center text-gray-400 py-8">请从下方选择产品添加到报价清单</td></tr>'
+    : quoteItems.map((item, i) => `
+      <tr>
+        <td>${item.code}</td>
+        <td>${item.name}</td>
+        <td>${item.spec}</td>
+        <td><input type="number" value="${item.qty}" min="1" class="input-field w-20 text-center" onchange="updateQuoteItemQty(${i}, this.value)"></td>
+        <td>$${item.unitPrice.toFixed(2)}</td>
+        <td class="font-semibold">$${item.lineTotal.toFixed(2)}</td>
+        <td><button class="btn-danger text-xs" onclick="removeQuoteItem(${i})">删除</button></td>
+      </tr>`).join('');
+
+  const subtotal = quoteItems.reduce((s, it) => s + it.lineTotal, 0);
+  const discountPct = parseFloat(document.getElementById('discountInput')?.value || 0);
+  const finalTotal = subtotal * (1 - discountPct / 100);
+
+  document.getElementById('mainContent').innerHTML = `
+    <h2 class="text-xl font-bold text-gray-800 mb-4">📋 新建报价单</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- 左：客户选择 + 产品选择 -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">👤 选择客户</h3>
+          <div class="flex gap-3 items-end">
+            <div class="flex-1">
+              <label class="text-xs text-gray-500">客户</label>
+              <select id="quoteCustomer" class="input-field" onchange="onCustomerChange()">
+                <option value="">-- 请选择客户 --</option>
+                ${custOptions}
+              </select>
+            </div>
+            <button class="btn-outline text-sm" onclick="navigateTo('customers')">+ 新建客户</button>
+          </div>
+          <div id="customerDetail" class="mt-3 text-sm text-gray-600 hidden"></div>
+        </div>
+
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">🧪 选择产品</h3>
+          <div class="flex gap-3 items-end flex-wrap">
+            <div class="flex-1 min-w-[200px]">
+              <label class="text-xs text-gray-500">产品搜索/选择</label>
+              <select id="productSelect" class="input-field">
+                <option value="">-- 请选择产品 --</option>
+                ${prodOptions}
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">数量</label>
+              <input type="number" id="productQty" value="1" min="1" class="input-field w-20 text-center">
+            </div>
+            <button class="btn-primary" onclick="addProductToQuote()">+ 添加</button>
+          </div>
+          <div id="selectedProductInfo" class="mt-2 text-sm text-gray-500 hidden"></div>
+        </div>
+
+        <!-- 报价清单表格 -->
+        <div class="card p-4">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-semibold text-gray-700">📝 报价清单</h3>
+            <button class="btn-outline text-sm" onclick="quoteItems=[];renderQuotePage();toast('已清空清单','success')">清空清单</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="quote-table w-full">
+              <thead>
+                <tr><th>编码</th><th>产品名称</th><th>规格</th><th>数量</th><th>单价</th><th>小计</th><th>操作</th></tr>
+              </thead>
+              <tbody>${itemsHtml}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：金额核算 + 货代 + 备注 -->
+      <div class="space-y-4">
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">💰 金额核算</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span>原始总金额：</span><span class="font-bold">$${subtotal.toFixed(2)}</span></div>
+            <div class="flex items-center gap-2">
+              <span>折扣比例：</span>
+              <input type="number" id="discountInput" value="${discountPct}" min="0" max="100" step="0.1" class="input-field w-16 text-center" onchange="renderQuotePage()">
+              <span>%</span>
+            </div>
+            <div class="flex justify-between text-lg"><span>折后总价：</span><span class="font-bold text-blue-600">$${finalTotal.toFixed(2)}</span></div>
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">🚚 货代运价匹配</h3>
+          <div id="freightMatch" class="text-sm text-gray-500">请先选择客户</div>
+          <div class="mt-2">
+            <label class="text-xs text-gray-500">运费手动微调 (USD)</label>
+            <input type="text" id="freightManual" class="input-field" placeholder="可手动输入调整运费说明">
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">📝 备注</h3>
+          <textarea id="orderNote" class="input-field" rows="2" placeholder="订单备注（内部使用）"></textarea>
+          <textarea id="shippingNote" class="input-field mt-2" rows="2" placeholder="出货备注（会显示在发货文案中）"></textarea>
+        </div>
+
+        <button class="btn-primary w-full py-3 text-base" onclick="saveOrder()">💾 保存报价单</button>
+        <button class="btn-success w-full py-3 text-base" onclick="generateShippingDoc()">📋 一键生成货代发货文案</button>
+      </div>
+    </div>
+  `;
+
+  // 绑定产品选择事件
+  document.getElementById('productSelect').addEventListener('change', function() {
+    const opt = this.selectedOptions[0];
+    const info = document.getElementById('selectedProductInfo');
+    if (opt && opt.value) {
+      info.innerHTML = '规格：<b>' + opt.dataset.spec + '</b> | 单价：<b>$' + opt.dataset.price + '</b>';
+      info.classList.remove('hidden');
+    } else {
+      info.classList.add('hidden');
+    }
+  });
+
+  // 如果之前选了客户，恢复显示
+  const savedCustId = sessionStorage.getItem('quote_customerId');
+  if (savedCustId) {
+    document.getElementById('quoteCustomer').value = savedCustId;
+    onCustomerChange();
+  }
+}
+/* ========== 报价辅助函数 ========== */
+function addProductToQuote() {
+  const sel = document.getElementById('productSelect');
+  const qty = parseInt(document.getElementById('productQty').value) || 1;
+  if (!sel.value) return toast('请先选择一款产品', 'error');
+  const opt = sel.selectedOptions[0];
+  const code = opt.value;
+  const name = opt.dataset.name;
+  const spec = opt.dataset.spec;
+  const price = parseFloat(opt.dataset.price);
+  // 检查是否已存在同编码产品，存在则合并数量
+  const existing = quoteItems.find(it => it.code === code);
+  if (existing) {
+    existing.qty += qty;
+    existing.lineTotal = existing.qty * existing.unitPrice;
+    toast('已合并到现有行，数量累加', 'success');
+  } else {
+    quoteItems.push({ code, name, spec, qty, unitPrice: price, lineTotal: price * qty });
+    toast('已添加：' + code, 'success');
+  }
+  // 保留客户选择
+  const custEl = document.getElementById('quoteCustomer');
+  if (custEl && custEl.value) sessionStorage.setItem('quote_customerId', custEl.value);
+  renderQuotePage();
+}
+
+function updateQuoteItemQty(index, val) {
+  const qty = parseInt(val) || 0;
+  if (qty <= 0) { quoteItems.splice(index, 1); }
+  else { quoteItems[index].qty = qty; quoteItems[index].lineTotal = qty * quoteItems[index].unitPrice; }
+  const custEl = document.getElementById('quoteCustomer');
+  if (custEl && custEl.value) sessionStorage.setItem('quote_customerId', custEl.value);
+  renderQuotePage();
+}
+
+function removeQuoteItem(index) {
+  quoteItems.splice(index, 1);
+  const custEl = document.getElementById('quoteCustomer');
+  if (custEl && custEl.value) sessionStorage.setItem('quote_customerId', custEl.value);
+  renderQuotePage();
+}
+
+function onCustomerChange() {
+  const custId = document.getElementById('quoteCustomer').value;
+  sessionStorage.setItem('quote_customerId', custId);
+  const detailEl = document.getElementById('customerDetail');
+  const freightEl = document.getElementById('freightMatch');
+  if (!custId) { detailEl.classList.add('hidden'); freightEl.innerHTML = '<span class="text-sm text-gray-500">请先选择客户</span>'; return; }
+  const customers = getData('customers') || [];
+  const cust = customers.find(c => c.id == custId);
+  if (!cust) return;
+  detailEl.innerHTML = '📞 ' + cust.contact + ' | 📧 ' + cust.email + ' | 📍 ' + cust.city + ', ' + cust.country;
+  detailEl.classList.remove('hidden');
+  // 匹配货代
+  const freight = getData('freight') || [];
+  const matched = freight.find(f => f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())));
+  if (matched) {
+    freightEl.innerHTML = '<div class="text-sm space-y-1"><div><b>货代：</b>' + matched.forwarder + '</div><div><b>渠道：</b>' + matched.channel + '</div>'
+      + (matched.firstWeight !== '0' ? '<div><b>首重运费：</b>' + matched.firstWeight + ' USD</div><div><b>续重运费：</b>' + matched.additionalWeight + ' USD</div>' : '')
+      + '<div><b>时效：</b>' + matched.leadTime + '</div>'
+      + (matched.note ? '<div><b>备注：</b>' + matched.note + '</div>' : '') + '</div>';
+  } else {
+    freightEl.innerHTML = '<span class="text-sm text-orange-500">⚠ 未匹配到该国货代，请前往货代运价页面添加</span>';
+  }
+}
+
+/* ========== 保存订单 ========== */
+function saveOrder() {
+  const custId = document.getElementById('quoteCustomer').value;
+  if (!custId) return toast('请先选择客户', 'error');
+  if (quoteItems.length === 0) return toast('请至少添加一款产品', 'error');
+  const customers = getData('customers') || [];
+  const cust = customers.find(c => c.id == custId);
+  const freight = getData('freight') || [];
+  const matched = freight.find(f => f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())));
+  const discountPct = parseFloat(document.getElementById('discountInput').value || 0);
+  const subtotal = quoteItems.reduce((s, it) => s + it.lineTotal, 0);
+  const order = {
+    id: Date.now(),
+    customerId: custId,
+    customerName: cust.name,
+    customerCountry: cust.country,
+    items: JSON.parse(JSON.stringify(quoteItems)),
+    subtotal: subtotal,
+    discountPct: discountPct,
+    finalTotal: subtotal * (1 - discountPct / 100),
+    freightInfo: matched ? JSON.parse(JSON.stringify(matched)) : null,
+    freightManual: document.getElementById('freightManual').value || '',
+    orderNote: document.getElementById('orderNote').value || '',
+    shippingNote: document.getElementById('shippingNote').value || '',
+    createdAt: new Date().toISOString(),
+    salesPerson: currentUser.displayName
+  };
+  const orders = getData('orders') || [];
+  orders.unshift(order);
+  saveData('orders', orders);
+  toast('报价单已保存！', 'success');
+  // 清空报价清单准备下一单
+  quoteItems = [];
+  sessionStorage.removeItem('quote_customerId');
+  renderQuotePage();
+}
+
+/* ========== 一键生成货代发货文案 ========== */
+function generateShippingDoc() {
+  const custId = document.getElementById('quoteCustomer').value;
+  if (!custId) return toast('请先选择客户', 'error');
+  if (quoteItems.length === 0) return toast('请至少添加一款产品', 'error');
+  const customers = getData('customers') || [];
+  const cust = customers.find(c => c.id == custId);
+  const freight = getData('freight') || [];
+  const matched = freight.find(f => f.countries.toLowerCase().split(',').some(c => cust.country.toLowerCase().includes(c.trim().toLowerCase())));
+
+  // 汇总产品行
+  const productLines = quoteItems.map(it => it.name + ' ' + it.spec + ' x' + it.qty).join('\n');
+
+  const doc = '业务员：' + currentUser.displayName + '\n'
+    + '货代：' + (matched ? matched.forwarder : '（未匹配）') + '\n'
+    + '国家：' + cust.country + '\n'
+    + '货品：\n' + productLines + '\n'
+    + '─────────────\n'
+    + '名字：' + cust.contact + '\n'
+    + '电话：' + cust.phone + '\n'
+    + '地址：' + cust.address + '\n'
+    + '邮编：' + cust.postal + '\n'
+    + '城市：' + cust.city + '\n'
+    + '省州：' + cust.state + '\n'
+    + '邮箱：' + cust.email + (matched ? '\n─────────────\n渠道：' + matched.channel + '\n时效：' + matched.leadTime : '');
+
+  // 弹窗展示文案
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">'
+    + '<div class="flex justify-between items-center mb-3"><h3 class="text-lg font-bold">📋 货代发货文案</h3>'
+    + '<button class="text-gray-400 hover:text-gray-600 text-xl" onclick="this.closest(\'div.modal-overlay\').remove()">✕</button></div>'
+    + '<pre class="shipping-doc">' + doc + '</pre>'
+    + '<div class="flex gap-3 mt-4"><button class="btn-primary" onclick="copyShippingDoc(this)">📋 一键复制</button>'
+    + '<button class="btn-outline" onclick="this.closest(\'div.modal-overlay\').remove()">关闭</button></div></div>';
+  document.body.appendChild(modal);
+}
+
+function copyShippingDoc(btn) {
+  const pre = btn.closest('.modal-overlay').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    toast('已复制到剪贴板！', 'success');
+  }).catch(() => {
+    // 降级方案
+    const ta = document.createElement('textarea');
+    ta.value = pre.textContent;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    toast('已复制到剪贴板！', 'success');
+  });
+}
+/* ================================================================
+   四、订单记录页面
+   ================================================================ */
+function renderOrdersPage() {
+  const orders = getData('orders') || [];
+  let filterText = '';
+  let filteredOrders = [...orders];
+
+  document.getElementById('mainContent').innerHTML = `
+    <h2 class="text-xl font-bold text-gray-800 mb-4">📁 订单记录</h2>
+    <div class="card p-4 mb-4">
+      <div class="flex gap-3 flex-wrap items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs text-gray-500">搜索（客户名 / 产品名）</label>
+          <input type="text" id="orderSearch" class="input-field" placeholder="输入客户名或产品名搜索..." oninput="filterOrders()">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">按时间筛选</label>
+          <select id="orderTimeFilter" class="input-field w-36" onchange="filterOrders()">
+            <option value="all">全部时间</option>
+            <option value="7">近7天</option>
+            <option value="30">近30天</option>
+            <option value="90">近3个月</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="orderList" class="space-y-3">
+      ${renderOrderList(filteredOrders)}
+    </div>
+  `;
+}
+
+function filterOrders() {
+  const orders = getData('orders') || [];
+  const search = (document.getElementById('orderSearch')?.value || '').toLowerCase();
+  const timeFilter = document.getElementById('orderTimeFilter')?.value || 'all';
+  let filtered = orders;
+  if (search) {
+    filtered = filtered.filter(o =>
+      o.customerName.toLowerCase().includes(search) ||
+      o.items.some(it => it.name.toLowerCase().includes(search) || it.code.toLowerCase().includes(search))
+    );
+  }
+  if (timeFilter !== 'all') {
+    const cutoff = Date.now() - parseInt(timeFilter) * 86400000;
+    filtered = filtered.filter(o => new Date(o.createdAt).getTime() > cutoff);
+  }
+  document.getElementById('orderList').innerHTML = renderOrderList(filtered);
+}
+
+function renderOrderList(orders) {
+  if (orders.length === 0) return '<div class="card p-8 text-center text-gray-400">暂无订单记录</div>';
+  return orders.map(o => {
+    const date = new Date(o.createdAt);
+    const dateStr = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0') + ' ' + String(date.getHours()).padStart(2,'0') + ':' + String(date.getMinutes()).padStart(2,'0');
+    const itemsStr = o.items.map(it => it.code + ' x' + it.qty).join(', ');
+    return '<div class="card p-4 hover:shadow-md transition">'
+      + '<div class="flex justify-between items-start flex-wrap gap-2">'
+      + '<div><span class="font-semibold text-gray-800">' + o.customerName + '</span>'
+      + '<span class="badge bg-blue-100 text-blue-700 ml-2">' + o.customerCountry + '</span>'
+      + '<span class="text-xs text-gray-400 ml-2">' + dateStr + '</span></div>'
+      + '<div class="text-right"><span class="text-lg font-bold text-blue-600">$' + o.finalTotal.toFixed(2) + '</span>'
+      + (o.discountPct > 0 ? '<span class="text-xs text-orange-500 ml-1">(' + o.discountPct + '% off)</span>' : '') + '</div>'
+      + '</div>'
+      + '<div class="text-sm text-gray-500 mt-1">产品：' + itemsStr + '</div>'
+      + '<div class="flex gap-2 mt-2">'
+      + '<button class="btn-outline text-xs" onclick="viewOrderDetail(' + o.id + ')">查看详情</button>'
+      + '<button class="btn-outline text-xs" onclick="reuseOrder(' + o.id + ')">复用报价</button>'
+      + '<button class="btn-danger text-xs" onclick="deleteOrder(' + o.id + ')">删除</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+function viewOrderDetail(id) {
+  const orders = getData('orders') || [];
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  const itemsHtml = o.items.map(it => '<tr><td>' + it.code + '</td><td>' + it.name + '</td><td>' + it.spec + '</td><td>' + it.qty + '</td><td>$' + it.unitPrice.toFixed(2) + '</td><td>$' + it.lineTotal.toFixed(2) + '</td></tr>').join('');
+  const date = new Date(o.createdAt).toLocaleString('zh-CN');
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="bg-white rounded-xl p-6 w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">'
+    + '<div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold">📋 订单详情 #' + o.id + '</h3>'
+    + '<button class="text-gray-400 hover:text-gray-600 text-xl" onclick="this.closest(\'div.modal-overlay\').remove()">✕</button></div>'
+    + '<div class="grid grid-cols-2 gap-3 text-sm mb-4">'
+    + '<div><b>客户：</b>' + o.customerName + '</div><div><b>国家：</b>' + o.customerCountry + '</div>'
+    + '<div><b>业务员：</b>' + o.salesPerson + '</div><div><b>时间：</b>' + date + '</div>'
+    + '<div><b>原始总价：</b>$' + o.subtotal.toFixed(2) + '</div><div><b>折扣：</b>' + o.discountPct + '%</div>'
+    + '<div><b>折后总价：</b><span class="text-blue-600 font-bold text-lg">$' + o.finalTotal.toFixed(2) + '</span></div>'
+    + (o.orderNote ? '<div class="col-span-2"><b>订单备注：</b>' + o.orderNote + '</div>' : '')
+    + (o.shippingNote ? '<div class="col-span-2"><b>出货备注：</b>' + o.shippingNote + '</div>' : '')
+    + '</div>'
+    + '<table class="quote-table w-full mb-4"><thead><tr><th>编码</th><th>产品</th><th>规格</th><th>数量</th><th>单价</th><th>小计</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>'
+    + '<button class="btn-outline text-sm" onclick="this.closest(\'div.modal-overlay\').remove()">关闭</button></div>';
+  document.body.appendChild(modal);
+}
+
+function reuseOrder(id) {
+  const orders = getData('orders') || [];
+  const o = orders.find(o => o.id === id);
+  if (!o) return;
+  quoteItems = o.items.map(it => ({ code: it.code, name: it.name, spec: it.spec, qty: it.qty, unitPrice: it.unitPrice, lineTotal: it.lineTotal }));
+  sessionStorage.setItem('quote_customerId', o.customerId);
+  navigateTo('quote');
+  toast('已复用订单报价清单', 'success');
+}
+
+function deleteOrder(id) {
+  if (!confirm('确定删除此订单记录？')) return;
+  let orders = getData('orders') || [];
+  orders = orders.filter(o => o.id !== id);
+  saveData('orders', orders);
+  renderOrdersPage();
+  toast('订单已删除', 'success');
+}
+/* ================================================================
+   五、客户管理页面 (CRUD)
+   ================================================================ */
+function renderCustomersPage() {
+  const customers = getData('customers') || [];
+  const rows = customers.length === 0
+    ? '<tr><td colspan="5" class="text-center text-gray-400 py-8">暂无客户数据，点击下方按钮新增</td></tr>'
+    : customers.map(c => `
+      <tr>
+        <td class="font-medium">${c.name}</td>
+        <td>${c.contact}</td>
+        <td>${c.email}</td>
+        <td>${c.country}</td>
+        <td>
+          <button class="btn-outline text-xs mr-1" onclick="editCustomer(${c.id})">编辑</button>
+          <button class="btn-danger text-xs" onclick="deleteCustomer(${c.id})">删除</button>
+        </td>
+      </tr>`).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">👥 客户管理</h2>
+      <button class="btn-primary" onclick="showCustomerForm()">+ 新增客户</button>
+    </div>
+    <div class="card p-4">
+      <div class="overflow-x-auto">
+        <table class="quote-table w-full">
+          <thead><tr><th>客户名称</th><th>联系人</th><th>邮箱</th><th>国家</th><th>操作</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function showCustomerForm(editId) {
+  const customers = getData('customers') || [];
+  const c = editId ? customers.find(c => c.id === editId) : null;
+  const title = c ? '编辑客户' : '新增客户';
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">'
+    + '<h3 class="text-lg font-bold mb-4">' + title + '</h3>'
+    + '<div class="grid grid-cols-2 gap-3 text-sm">'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">客户名称</label><input id="cf_name" class="input-field" value="' + (c ? c.name : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">联系人</label><input id="cf_contact" class="input-field" value="' + (c ? c.contact : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">电话</label><input id="cf_phone" class="input-field" value="' + (c ? c.phone : '') + '"></div>'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">邮箱</label><input id="cf_email" class="input-field" value="' + (c ? c.email : '') + '"></div>'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">详细地址</label><input id="cf_address" class="input-field" value="' + (c ? c.address : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">邮编</label><input id="cf_postal" class="input-field" value="' + (c ? c.postal : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">城市</label><input id="cf_city" class="input-field" value="' + (c ? c.city : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">省/州</label><input id="cf_state" class="input-field" value="' + (c ? c.state : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">国家</label><input id="cf_country" class="input-field" value="' + (c ? c.country : '') + '"></div>'
+    + '</div>'
+    + '<div class="flex gap-3 mt-4">'
+    + '<button class="btn-primary" onclick="saveCustomer(' + (c ? c.id : 'null') + ')">💾 保存</button>'
+    + '<button class="btn-outline" onclick="this.closest(\'div.modal-overlay\').remove()">取消</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function saveCustomer(editId) {
+  const get = id => document.getElementById('cf_' + id)?.value || '';
+  const data = { name: get('name'), contact: get('contact'), phone: get('phone'), email: get('email'), address: get('address'), postal: get('postal'), city: get('city'), state: get('state'), country: get('country') };
+  if (!data.name || !data.country || !data.email) return toast('请至少填写客户名称、国家和邮箱', 'error');
+  let customers = getData('customers') || [];
+  if (editId) {
+    const idx = customers.findIndex(c => c.id === editId);
+    if (idx >= 0) { customers[idx] = { ...customers[idx], ...data }; }
+  } else {
+    customers.push({ id: Date.now(), ...data });
+  }
+  saveData('customers', customers);
+  document.querySelector('.modal-overlay')?.remove();
+  renderCustomersPage();
+  toast('客户已保存', 'success');
+}
+
+function editCustomer(id) { showCustomerForm(id); }
+
+function deleteCustomer(id) {
+  if (!confirm('确定删除此客户？')) return;
+  let customers = getData('customers') || [];
+  customers = customers.filter(c => c.id !== id);
+  saveData('customers', customers);
+  renderCustomersPage();
+  toast('客户已删除', 'success');
+}
+/* ================================================================
+   六、产品管理页面 (CRUD)
+   ================================================================ */
+function renderProductsPage() {
+  const products = getData('products') || [];
+  const rows = products.length === 0
+    ? '<tr><td colspan="6" class="text-center text-gray-400 py-8">暂无产品数据</td></tr>'
+    : products.map(p => `
+      <tr>
+        <td>${p.code}</td>
+        <td>${p.name}</td>
+        <td>${p.spec}</td>
+        <td>$${p.price.toFixed(2)}</td>
+        <td>
+          <button class="btn-outline text-xs mr-1" onclick="editProduct('${p.code}')">编辑</button>
+          <button class="btn-danger text-xs" onclick="deleteProduct('${p.code}')">删除</button>
+        </td>
+      </tr>`).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">🧪 产品管理</h2>
+      <div class="flex gap-2">
+        <button class="btn-outline text-sm" onclick="resetProducts()">🔄 重置为默认库</button>
+        <button class="btn-primary" onclick="showProductForm()">+ 新增产品</button>
+      </div>
+    </div>
+    <div class="card p-4">
+      <div class="overflow-x-auto">
+        <table class="quote-table w-full">
+          <thead><tr><th>内部编码</th><th>English Product Name</th><th>Specification</th><th>Unit Price</th><th>操作</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function showProductForm(editCode) {
+  const products = getData('products') || [];
+  const p = editCode ? products.find(p => p.code === editCode) : null;
+  const title = p ? '编辑产品' : '新增产品';
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">'
+    + '<h3 class="text-lg font-bold mb-4">' + title + '</h3>'
+    + '<div class="space-y-3 text-sm">'
+    + '<div><label class="text-xs text-gray-500">Internal Code</label><input id="pf_code" class="input-field" value="' + (p ? p.code : '') + '" ' + (p ? 'readonly' : '') + '></div>'
+    + '<div><label class="text-xs text-gray-500">English Product Name</label><input id="pf_name" class="input-field" value="' + (p ? p.name : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">Specification</label><input id="pf_spec" class="input-field" value="' + (p ? p.spec : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">Unit Price (USD)</label><input id="pf_price" type="number" step="0.01" class="input-field" value="' + (p ? p.price : '') + '"></div>'
+    + '</div>'
+    + '<div class="flex gap-3 mt-4">'
+    + '<button class="btn-primary" onclick="saveProduct(' + (p ? '&apos;' + p.code + '&apos;' : 'null') + ')">💾 保存</button>'
+    + '<button class="btn-outline" onclick="this.closest(\'div.modal-overlay\').remove()">取消</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function saveProduct(editCode) {
+  const code = document.getElementById('pf_code')?.value?.trim();
+  const name = document.getElementById('pf_name')?.value?.trim();
+  const spec = document.getElementById('pf_spec')?.value?.trim();
+  const price = parseFloat(document.getElementById('pf_price')?.value || '0');
+  if (!code || !name || !spec || price <= 0) return toast('请完整填写所有字段', 'error');
+  let products = getData('products') || [];
+  if (editCode) {
+    const idx = products.findIndex(p => p.code === editCode);
+    if (idx >= 0) { products[idx] = { code, name, spec, price }; }
+  } else {
+    if (products.find(p => p.code === code)) return toast('编码已存在', 'error');
+    products.push({ code, name, spec, price });
+  }
+  saveData('products', products);
+  document.querySelector('.modal-overlay')?.remove();
+  renderProductsPage();
+  toast('产品已保存', 'success');
+}
+
+function editProduct(code) { showProductForm(code); }
+
+function deleteProduct(code) {
+  if (!confirm('确定删除产品 ' + code + '？')) return;
+  let products = getData('products') || [];
+  products = products.filter(p => p.code !== code);
+  saveData('products', products);
+  renderProductsPage();
+  toast('产品已删除', 'success');
+}
+
+function resetProducts() {
+  if (!confirm('确定重置产品库为默认数据？当前修改将丢失。')) return;
+  saveData('products', JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)));
+  renderProductsPage();
+  toast('产品库已重置为默认', 'success');
+}
+/* ================================================================
+   七、货代运价管理页面 (CRUD)
+   ================================================================ */
+function renderFreightPage() {
+  const freight = getData('freight') || [];
+  const rows = freight.length === 0
+    ? '<tr><td colspan="8" class="text-center text-gray-400 py-8">暂无货代数据</td></tr>'
+    : freight.map(f => `
+      <tr>
+        <td class="font-medium">${f.countries}</td>
+        <td>${f.forwarder}</td>
+        <td>${f.channel || '-'}</td>
+        <td>${f.firstWeight !== '0' ? f.firstWeight + ' USD' : '-'}</td>
+        <td>${f.additionalWeight !== '0' ? f.additionalWeight + ' USD' : '-'}</td>
+        <td>${f.leadTime}</td>
+        <td class="text-xs">${f.note || '-'}</td>
+        <td>
+          <button class="btn-outline text-xs mr-1" onclick="editFreight(${f.id})">编辑</button>
+          <button class="btn-danger text-xs" onclick="deleteFreight(${f.id})">删除</button>
+        </td>
+      </tr>`).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">🚚 货代运价管理</h2>
+      <div class="flex gap-2">
+        <button class="btn-outline text-sm" onclick="resetFreight()">🔄 重置为默认库</button>
+        <button class="btn-primary" onclick="showFreightForm()">+ 新增货代</button>
+      </div>
+    </div>
+    <div class="card p-4">
+      <div class="overflow-x-auto">
+        <table class="quote-table w-full">
+          <thead><tr><th>国家/地区</th><th>货代</th><th>渠道</th><th>首重运费</th><th>续重运费</th><th>运输时效</th><th>备注</th><th>操作</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function showFreightForm(editId) {
+  const freight = getData('freight') || [];
+  const f = editId ? freight.find(f => f.id === editId) : null;
+  const title = f ? '编辑货代运价' : '新增货代运价';
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = '<div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">'
+    + '<h3 class="text-lg font-bold mb-4">' + title + '</h3>'
+    + '<div class="grid grid-cols-2 gap-3 text-sm">'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">国家/地区（多个用逗号分隔）</label><input id="ff_countries" class="input-field" value="' + (f ? f.countries : '') + '" placeholder="如：India, UAE, Israel"></div>'
+    + '<div><label class="text-xs text-gray-500">货代名称 (Forwarder)</label><input id="ff_forwarder" class="input-field" value="' + (f ? f.forwarder : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">物流渠道 (Channel)</label><input id="ff_channel" class="input-field" value="' + (f ? f.channel : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">首重运费 (First Weight USD)</label><input id="ff_first" class="input-field" value="' + (f ? f.firstWeight : '') + '"></div>'
+    + '<div><label class="text-xs text-gray-500">续重运费 (Additional Weight USD)</label><input id="ff_additional" class="input-field" value="' + (f ? f.additionalWeight : '') + '"></div>'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">运输时效 (Lead Time)</label><input id="ff_leadtime" class="input-field" value="' + (f ? f.leadTime : '') + '"></div>'
+    + '<div class="col-span-2"><label class="text-xs text-gray-500">关税/备注 (Note)</label><input id="ff_note" class="input-field" value="' + (f ? f.note : '') + '"></div>'
+    + '</div>'
+    + '<div class="flex gap-3 mt-4">'
+    + '<button class="btn-primary" onclick="saveFreight(' + (f ? f.id : 'null') + ')">💾 保存</button>'
+    + '<button class="btn-outline" onclick="this.closest(\'div.modal-overlay\').remove()">取消</button>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+}
+
+function saveFreight(editId) {
+  const get = id => document.getElementById('ff_' + id)?.value || '';
+  const data = { countries: get('countries'), forwarder: get('forwarder'), channel: get('channel'), firstWeight: get('first'), additionalWeight: get('additional'), leadTime: get('leadtime'), note: get('note') };
+  if (!data.countries || !data.forwarder) return toast('请至少填写国家/地区和货代名称', 'error');
+  let freight = getData('freight') || [];
+  if (editId) {
+    const idx = freight.findIndex(f => f.id === editId);
+    if (idx >= 0) { freight[idx] = { ...freight[idx], ...data }; }
+  } else {
+    freight.push({ id: Date.now(), ...data });
+  }
+  saveData('freight', freight);
+  document.querySelector('.modal-overlay')?.remove();
+  renderFreightPage();
+  toast('货代运价已保存', 'success');
+}
+
+function editFreight(id) { showFreightForm(id); }
+
+function deleteFreight(id) {
+  if (!confirm('确定删除此货代记录？')) return;
+  let freight = getData('freight') || [];
+  freight = freight.filter(f => f.id !== id);
+  saveData('freight', freight);
+  renderFreightPage();
+  toast('货代记录已删除', 'success');
+}
+
+function resetFreight() {
+  if (!confirm('确定重置货代运价库为默认数据？当前修改将丢失。')) return;
+  saveData('freight', JSON.parse(JSON.stringify(DEFAULT_FREIGHT)));
+  renderFreightPage();
+  toast('货代库已重置为默认', 'success');
+}
+</script>
+</body>
+</html>
