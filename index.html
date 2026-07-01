@@ -82,6 +82,8 @@
       <span class="text-lg">🧪</span><span class="nav-text">产品管理</span></a>
     <a href="#" data-page="freight" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
       <span class="text-lg">🚚</span><span class="nav-text">货代运价</span></a>
+    <a href="#" data-page="calculator" class="nav-item flex items-center gap-3 px-3 py-3 rounded-lg text-white text-sm no-underline">
+      <span class="text-lg">🧮</span><span class="nav-text">快速计算器</span></a>
   </nav>
   <div class="px-4 pt-4 border-t border-white/10">
     <div class="text-xs text-gray-400 nav-text">当前账号</div>
@@ -316,6 +318,7 @@ function navigateTo(page) {
     case 'customers': renderCustomersPage(); break;
     case 'products': renderProductsPage(); break;
     case 'freight': renderFreightPage(); break;
+    case 'calculator': renderCalculatorPage(); break;
   }
 }
 
@@ -1051,6 +1054,117 @@ function resetFreight() {
   renderFreightPage();
   toast('货代库已重置为默认', 'success');
 }
+
+﻿/* ================================================================
+   八、快速计算器页面
+   ================================================================ */
+let calcItems = [];
+
+function renderCalculatorPage() {
+  const products = getData('products') || [];
+  const customers = getData('customers') || [];
+  const prodOptions = products.map(p => `<option value="${p.code}" data-name="${p.name}" data-spec="${p.spec}" data-price="${p.price}">${p.code} - ${p.name}</option>`).join('');
+  const custOptions = customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const itemsRows = calcItems.length === 0
+    ? `<tr><td colspan="7" class="text-center text-gray-400 py-6">👇 从下方选择产品快速添加</td></tr>`
+    : calcItems.map((it, i) => `
+      <tr><td>${it.code}</td><td>${it.name}</td><td>${it.spec}</td>
+        <td><input type="number" value="${it.qty}" min="1" class="input-field w-16 text-center" onchange="updateCalcItem(${i}, this.value)"></td>
+        <td>$${it.unitPrice.toFixed(2)}</td><td class="font-semibold">$${it.lineTotal.toFixed(2)}</td>
+        <td><button class="btn-danger text-xs" onclick="removeCalcItem(${i})">✕</button></td></tr>`).join('');
+  const subtotal = calcItems.reduce((s, it) => s + it.lineTotal, 0);
+  const discountPct = parseFloat(document.getElementById('calcDiscount')?.value || 0);
+  const finalTotal = subtotal * (1 - discountPct / 100);
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-gray-800">🧮 快速计算器</h2>
+      <button class="btn-outline text-sm" onclick="calcItems=[];renderCalculatorPage();toast('已清空','success')">清空重算</button>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">➕ 快速添加产品</h3>
+          <div class="flex gap-2 items-end flex-wrap">
+            <div class="flex-1 min-w-[160px]"><select id="calcProductSelect" class="input-field"><option value="">-- 选产品 --</option>${prodOptions}</select></div>
+            <input type="number" id="calcQty" value="1" min="1" class="input-field w-16 text-center" placeholder="数量">
+            <button class="btn-primary" onclick="addCalcItem()">添加</button>
+          </div>
+          <div id="calcProdInfo" class="mt-2 text-sm text-gray-500 hidden"></div>
+        </div>
+        <div class="card p-4">
+          <div class="overflow-x-auto">
+            <table class="quote-table w-full">
+              <thead><tr><th>编码</th><th>品名</th><th>规格</th><th>数量</th><th>单价</th><th>小计</th><th></th></tr></thead>
+              <tbody>${itemsRows}</tbody>
+            </table>
+          </div>
+          <div class="text-xs text-gray-400 mt-2">共 ${calcItems.length} 款产品 | 原始总价：<b>$${subtotal.toFixed(2)}</b></div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">💰 金额核算</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span>原始金额：</span><span class="font-bold">$${subtotal.toFixed(2)}</span></div>
+            <div class="flex items-center gap-2"><span>折扣：</span><input type="number" id="calcDiscount" value="${discountPct}" min="0" max="100" step="0.1" class="input-field w-16 text-center" onchange="renderCalculatorPage()"><span>%</span></div>
+            <div class="flex justify-between text-lg pt-2 border-t"><span>最终总价：</span><span class="font-bold text-blue-600">$${finalTotal.toFixed(2)}</span></div>
+          </div>
+        </div>
+        <div class="card p-4">
+          <h3 class="font-semibold text-gray-700 mb-3">💾 保存到客户</h3>
+          <select id="calcCustomer" class="input-field mb-2"><option value="">-- 选择客户（可跳过） --</option>${custOptions}</select>
+          <input type="text" id="calcNote" class="input-field mb-2" placeholder="备注（可选）">
+          <button class="btn-primary w-full" onclick="saveCalcToOrder()">📋 保存为报价记录</button>
+          <p class="text-xs text-gray-400 mt-2">不选客户也会保存到订单记录，后续可手动关联</p>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('calcProductSelect').addEventListener('change', function() {
+    const opt = this.selectedOptions[0], info = document.getElementById('calcProdInfo');
+    if (opt && opt.value) { info.innerHTML = '规格：<b>' + opt.dataset.spec + '</b> | 单价：<b>$' + opt.dataset.price + '</b>'; info.classList.remove('hidden'); document.getElementById('calcQty').focus(); }
+    else { info.classList.add('hidden'); }
+  });
+  document.getElementById('calcQty').addEventListener('keydown', function(e) { if (e.key === 'Enter') addCalcItem(); });
+}
+
+function addCalcItem() {
+  const sel = document.getElementById('calcProductSelect'), qty = parseInt(document.getElementById('calcQty').value) || 1;
+  if (!sel.value) return toast('请先选择产品', 'error');
+  const opt = sel.selectedOptions[0], code = opt.value, name = opt.dataset.name, spec = opt.dataset.spec, price = parseFloat(opt.dataset.price);
+  const exist = calcItems.find(it => it.code === code);
+  if (exist) { exist.qty += qty; exist.lineTotal = exist.qty * exist.unitPrice; }
+  else { calcItems.push({ code, name, spec, qty, unitPrice: price, lineTotal: price * qty }); }
+  toast('已添加 ' + code, 'success'); renderCalculatorPage();
+}
+
+function updateCalcItem(i, val) {
+  const qty = parseInt(val) || 0;
+  if (qty <= 0) calcItems.splice(i, 1); else { calcItems[i].qty = qty; calcItems[i].lineTotal = qty * calcItems[i].unitPrice; }
+  renderCalculatorPage();
+}
+
+function removeCalcItem(i) { calcItems.splice(i, 1); renderCalculatorPage(); }
+
+function saveCalcToOrder() {
+  if (calcItems.length === 0) return toast('请至少添加一款产品', 'error');
+  const custId = document.getElementById('calcCustomer')?.value;
+  let custName = '未指定客户', custCountry = '';
+  if (custId) { const customers = getData('customers') || [], c = customers.find(c2 => c2.id == custId); if (c) { custName = c.name; custCountry = c.country; } }
+  const discountPct = parseFloat(document.getElementById('calcDiscount')?.value || 0);
+  const subtotal = calcItems.reduce((s, it) => s + it.lineTotal, 0);
+  const freight = getData('freight') || [];
+  const matched = custCountry ? freight.find(f => {
+    const en = f.countries.toLowerCase().split(',').some(c2 => custCountry.toLowerCase().includes(c2.trim().toLowerCase()));
+    const cn = f.countriesCN ? f.countriesCN.toLowerCase().split(',').some(c2 => custCountry.toLowerCase().includes(c2.trim().toLowerCase())) : false;
+    return en || cn;
+  }) : null;
+  const orders = getData('orders') || [];
+  orders.unshift({ id: Date.now(), customerId: custId || null, customerName: custName, customerCountry: custCountry, items: JSON.parse(JSON.stringify(calcItems)), subtotal, discountPct, finalTotal: subtotal * (1 - discountPct / 100), freightInfo: matched || null, freightManual: '', orderNote: document.getElementById('calcNote')?.value || '', shippingNote: '', createdAt: new Date().toISOString(), salesPerson: currentUser.displayName });
+  saveData('orders', orders);
+  toast('已保存到订单记录！', 'success'); calcItems = []; renderCalculatorPage();
+}
+
 </script>
 </body>
 </html>
